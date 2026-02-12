@@ -1,5 +1,12 @@
 from tkinter import *
-from tkinter import messagebox
+import os
+
+# ========== ПОЛУЧАЕМ ПАПКУ СКРИПТА ==========
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+def get_image_path(filename):
+    """Возвращает полный путь к изображению в папке скрипта"""
+    return os.path.join(script_dir, filename)
 
 # ========== ИНИЦИАЛИЗАЦИЯ ОКНА ==========
 root = Tk()
@@ -28,17 +35,17 @@ def on_enter(label):
 def on_leave(label):
     label.config(fg='#575757')  
 
-# ========== ФУНКЦИЯ ЗАГРУЗКИ ИЗОБРАЖЕНИЙ С ЗАЩИТОЙ ==========
-def safe_load_image(path, subsample=None):
-    """Загружает изображение. При ошибке — показывает предупреждение и возвращает None."""
-    try:
-        img = PhotoImage(file=path)
-        if subsample:
-            img = img.subsample(subsample[0], subsample[1])
-        return img
-    except Exception as e:
-        print(f"⚠️ Ошибка загрузки {path}: {e}")
-        return None
+# ========== ПРОВЕРКА НАЛИЧИЯ ФАЙЛОВ ==========
+required_files = ["logo.png", "ava.png", "photo_1.png", "photo_2.png"]
+missing = [f for f in required_files if not os.path.exists(get_image_path(f))]
+
+if missing:
+    from tkinter import messagebox
+    messagebox.showerror("Ошибка", 
+        f"Отсутствуют файлы в папке:\n{script_dir}\n\nНе найдены:\n" + "\n".join(missing) + 
+        "\n\nПоложите все 4 PNG-файла в эту папку и перезапустите программу.")
+    root.destroy()
+    exit()
 
 # ========== ШАПКА ==========
 header_container = Frame(root, bg='#34c759', padx=2, pady=2)
@@ -48,18 +55,10 @@ header = Frame(header_container, bg='#ebffef', height=60)
 header.pack(fill='x')
 header.pack_propagate(False)
 
-# Логотип (с защитой от отсутствия файла)
-logo_img = safe_load_image("logo.png", (14, 14))
-if logo_img:
-    logo_label = Label(header, image=logo_img, bg='#ebffef')
-    logo_label.pack(side='left', padx=(10, 5))
-    root.logo_img = logo_img  # сохраняем ссылку от сборщика мусора
-else:
-    Label(header, text='VK', font=('Arial', 20, 'bold'), fg='#34c759', bg='#ebffef').pack(side='left', padx=(10, 5))
-    # Показываем предупреждение ОДИН раз при запуске
-    root.after(100, lambda: messagebox.showwarning("Файлы не найдены", 
-        "Не найдены файлы изображений:\nlogo.png, ava.png, photo_1.png, photo_2.png\n\n"
-        "Положите их в папку с программой для полного вида интерфейса."))
+# Логотип
+logo_img = PhotoImage(file=get_image_path("logo.png")).subsample(14, 14)
+Label(header, image=logo_img, bg='#ebffef').pack(side='left', padx=(10, 5))
+root.logo_img = logo_img
 
 Label(header, text='вконтакте', font=('Arial', 20, 'bold'), fg='black', bg='#ebffef').pack(side='left')
 
@@ -99,22 +98,14 @@ profile_btn = Label(profile_frame, text='ПРОФИЛЬ', font=('Arial', 11),
 profile_btn.pack(side='left')
 profile_btn.bind('<Button-1>', open_profile)
 
-# Аватарка (с защитой от отсутствия файла)
-ava_img = safe_load_image("ava.png", (24, 24))
-if ava_img:
-    ava_label = Label(profile_frame, image=ava_img, bg='#ebffef', cursor='hand2')
-    ava_label.pack(side='left', padx=(5, 0))
-    ava_label.bind('<Button-1>', open_profile)
-    root.ava_img = ava_img
-else:
-    # Запасной вариант — кружок с инициалами
-    ava_canvas = Canvas(profile_frame, width=20, height=20, bg='#ebffef', highlightthickness=0, cursor='hand2')
-    ava_canvas.pack(side='left', padx=(5, 0))
-    ava_canvas.create_oval(2, 2, 18, 18, fill='#34c759', outline='')
-    ava_canvas.create_text(10, 10, text='Ю', fill='white', font=('Arial', 10, 'bold'))
-    ava_canvas.bind('<Button-1>', open_profile)
+# Аватарка
+ava_img = PhotoImage(file=get_image_path("ava.png")).subsample(24, 24)
+ava_label = Label(profile_frame, image=ava_img, bg='#ebffef', cursor='hand2')
+ava_label.pack(side='left', padx=(5, 0))
+ava_label.bind('<Button-1>', open_profile)
+root.ava_img = ava_img
 
-# Колокольчик справа от профиля
+# Колокольчик
 bell_btn = Button(right_frame, text='🔔', font=('Arial', 18), bg='#ebffef', 
                   fg='black', bd=0, relief='flat', cursor='hand2', 
                   activebackground='#d0f0d0')
@@ -138,19 +129,21 @@ for symbol, text in nav_items:
                  relief='flat', cursor='hand2')
     btn.pack(fill='x', pady=2)
 
-# Ссылки (исправлено позиционирование)
-footer_text = Label(nav_frame, text='Блог, Разработчикам,\nДля бизнеса, Авторам,\nДействия, Ещё', 
+# ========== ССЫЛКИ (поменяны местами) ==========
+# Сначала "Блог, Разработчикам..."
+footer_text = Label(nav_frame, text='Блог • Разработчикам • Для бизнеса • Авторам • Действия • Ещё', 
                     font=('Arial', 7, 'underline'), bg='#eeeeee', fg='#575757', 
-                    justify='left', cursor='hand2')
-footer_text.pack(side='bottom', anchor='w', padx=10, pady=(20, 5))
+                    justify='left', cursor='hand2', wraplength=180)
+footer_text.pack(anchor='w', padx=10, pady=(40, 5))
 footer_text.bind('<Button-1>', lambda e: on_link_click('Все ссылки'))
 footer_text.bind('<Enter>', lambda e: on_enter(footer_text))
 footer_text.bind('<Leave>', lambda e: on_leave(footer_text))
 
-footer_text2 = Label(nav_frame, text='Применяются\nрекомендательные технологии', 
+# Потом "Применяются рекомендательные технологии"
+footer_text2 = Label(nav_frame, text='Применяются рекомендательные технологии', 
                      font=('Arial', 7, 'underline'), bg='#eeeeee', fg='#575757', 
-                     justify='left', cursor='hand2')
-footer_text2.pack(side='bottom', anchor='w', padx=10, pady=(5, 0))
+                     justify='left', cursor='hand2', wraplength=160)
+footer_text2.pack(anchor='w', padx=10, pady=(5, 20))
 footer_text2.bind('<Button-1>', lambda e: on_link_click('Рекомендательные технологии'))
 footer_text2.bind('<Enter>', lambda e: on_enter(footer_text2))
 footer_text2.bind('<Leave>', lambda e: on_leave(footer_text2))
@@ -162,7 +155,6 @@ content.pack(side='left', fill='both', expand=True, padx=20, pady=20)
 feed_container = Frame(content, bg='#eeeeee')
 feed_container.pack(fill='both', expand=True)
 
-# Заголовок ленты
 header_feed_canvas = Canvas(feed_container, bg='#eeeeee', highlightthickness=0, height=40)
 header_feed_canvas.pack(fill='x', pady=(0, 10))
 
@@ -181,26 +173,21 @@ root.after(100, draw_header_feed)
 posts_container = Frame(feed_container, bg='white')
 posts_container.pack(fill='both', expand=True)
 
-# ========== РЕКЛАМА (с защитой от отсутствия файлов) ==========
+# ========== РЕКЛАМА ==========
 ad_frame = Frame(main_container, bg='#f0f0f0', width=200)
 ad_frame.pack(side='right', fill='y', pady=(50, 20))
 ad_frame.pack_propagate(False)
 
-ad_img1 = safe_load_image("photo_1.png", (2, 2))
-if ad_img1:
-    ad_label1 = Label(ad_frame, image=ad_img1, bg='#f0f0f0', relief='flat')
-    ad_label1.pack(pady=(0, 15))
-    root.ad_img1 = ad_img1
-else:
-    Label(ad_frame, text='[Реклама 1]', bg='#d0d0d0', width=25, height=6).pack(pady=(0, 15))
+ad_img1 = PhotoImage(file=get_image_path("photo_1.png")).subsample(2, 2)
+ad_label1 = Label(ad_frame, image=ad_img1, bg='#f0f0f0', relief='flat')
+ad_label1.pack(pady=(0, 15))
+root.ad_img1 = ad_img1
 
-ad_img2 = safe_load_image("photo_2.png", (2, 2))
-if ad_img2:
-    ad_label2 = Label(ad_frame, image=ad_img2, bg='#f0f0f0', relief='flat')
-    ad_label2.pack(pady=(0, 20))
-    root.ad_img2 = ad_img2
-else:
-    Label(ad_frame, text='[Реклама 2]', bg='#d0d0d0', width=25, height=6).pack(pady=(0, 20))
+ad_img2 = PhotoImage(file=get_image_path("photo_2.png")).subsample(2, 2)
+ad_label2 = Label(ad_frame, image=ad_img2, bg='#f0f0f0', relief='flat')
+ad_label2.pack(pady=(0, 20))
+root.ad_img2 = ad_img2
 
 # ========== ЗАПУСК ПРИЛОЖЕНИЯ ==========
 root.mainloop()
+
